@@ -14,7 +14,7 @@
       justify-content: center;
       min-height: 100vh;
       background-color: #f9f9f9;
-      margin: 0; /* Remove default body margin */
+      margin: 0;
     }
 
     .container {
@@ -23,7 +23,7 @@
       border: 2px dashed lightpink;
       border-radius: 10px;
       background-color: #fff;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Added subtle shadow */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
     h1 {
@@ -43,12 +43,12 @@
     button {
       padding: 10px 20px;
       background-color: lightpink;
-      color: white; /* Changed text color to white for better contrast */
+      color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
-      transition: background-color 0.3s ease; /* Added transition for hover effect */
+      transition: background-color 0.3s ease;
     }
 
     button:hover {
@@ -66,16 +66,12 @@
 
   <script>
     function convertExcel() {
-      // This check should now pass if the local file is loaded correctly
-     const fileInput = document.getElementById('excelFileInput');
+      const fileInput = document.getElementById('excelFileInput');
 
       if (typeof XLSX === 'undefined') {
-        // Using a custom message box instead of alert() as per instructions
-        showMessageBox("Error: The XLSX library is not loaded. Please ensure 'xlsx.full.min.js' is in the same folder as your HTML file and the filename is correct.");
-        console.error("XLSX library (xlsx.full.min.js) is not defined. Check file path and existence.");
+        showMessageBox("Error: The XLSX library is not loaded. Please check your internet connection or try again later.");
         return;
       }
-
 
       if (!fileInput.files.length) {
         showMessageBox("Please select an Excel or CSV file to convert.");
@@ -91,30 +87,21 @@
           let workbook;
 
           if (file.name.endsWith('.csv')) {
-            // For CSV, read as string and specify 'utf-8' encoding
             const csvString = new TextDecoder('utf-8').decode(data);
             workbook = XLSX.read(csvString, { type: 'string' });
           } else {
-            // For Excel files, read as array buffer
             workbook = XLSX.read(data, { type: 'array' });
           }
-
-          console.log("Sheet names:", workbook.SheetNames);
 
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
 
           if (!sheet) {
             showMessageBox("No sheets found or the first sheet is empty in the uploaded file.");
-            console.error("Sheet is undefined or null.");
             return;
           }
 
-          console.log("Raw sheet data:", sheet);
-
-          // Convert sheet to array of arrays (header: 1 means the first row is data, not header)
           const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-          console.log("Extracted rows:", rows);
 
           if (rows.length === 0) {
             showMessageBox("The uploaded file is empty.");
@@ -122,71 +109,38 @@
           }
 
           const newData = [];
-          // Define the new header row for the output file
-          newData.push(['Date', 'Name', 'Debit', 'Credit', 'Amount']);
+          newData.push(['Date', 'Details', 'Debit', 'Credit', 'Balance']);
 
-          // Assuming the first row of the input is headers, start processing from the second row (index 1)
-          const startIndex = 1; 
-
-          rows.slice(startIndex).forEach((row, index) => {
-            // Ensure row elements exist before accessing them
+          rows.slice(1).forEach((row) => {
             const inputDate = row[0];
-            const inputName = row[1];
-            const inputDebit = row[2];
-            const inputAmount = row[4]; // Assuming amount is in the 5th column (index 4)
+            const inputDetails = row[2];
+            const inputAmount = row[5];
 
             let formattedDate = '';
-            if (inputDate !== undefined && inputDate !== null && inputDate !== '') {
-              try {
-                // Check if it's an Excel date number (typically > 1 for valid dates)
-                if (typeof inputDate === 'number' && inputDate > 1) {
-                  const date = XLSX.utils.excelToExportDate(inputDate);
-                  formattedDate = date.toLocaleDateString('en-GB'); // Format as DD/MM/YYYY
-                } else if (typeof inputDate === 'string' && !isNaN(new Date(inputDate))) {
-                  // Try to parse as a string date if it's a valid date string
-                  const date = new Date(inputDate);
-                  formattedDate = date.toLocaleDateString('en-GB');
-                } else {
-                  // Fallback for other types or invalid date strings
-                  formattedDate = String(inputDate);
-                }
-              } catch (e) {
-                formattedDate = String(inputDate); // Fallback if date parsing fails
-                console.warn(`Error formatting date for row ${index + startIndex + 1}:`, inputDate, e);
+            if (inputDate) {
+              if (typeof inputDate === 'number' && inputDate > 1) {
+                const date = XLSX.utils.excel_to_date(inputDate);
+                formattedDate = date.toLocaleDateString('en-GB');
+              } else {
+                const date = new Date(inputDate);
+                formattedDate = !isNaN(date) ? date.toLocaleDateString('en-GB') : inputDate;
               }
             } else {
-              // If date is empty or undefined, use current date
               formattedDate = new Date().toLocaleDateString('en-GB');
             }
 
-            // Sanitize and convert other fields
-            const name = inputName !== undefined ? String(inputName) : "Unknown";
-            const debit = inputDebit !== undefined && !isNaN(parseFloat(inputDebit)) ? parseFloat(inputDebit) : 0;
-            const credit = 0; // Always 0 as per the request
-            const amount = inputAmount !== undefined && !isNaN(parseFloat(inputAmount)) ? parseFloat(inputAmount) : 0;
+            const details = inputDetails || "Unknown";
+            const debit = 0;
+            const credit = inputAmount || 0; // Assign original Amount to Credit column
+            const balance = null; // Leave Balance empty
 
-            // Only add row if there's meaningful data (name or non-zero amount)
-            if (name || amount !== 0) {
-              newData.push([formattedDate, name, debit, credit, amount]);
-            } else {
-              console.warn(`Skipping row ${index + startIndex + 1} due to insufficient data (Name/Amount missing or zero):`, row);
-            }
+            newData.push([formattedDate, details, debit, credit, balance]);
           });
 
-          console.log("Converted data:", newData);
-
-          if (newData.length <= 1) { // Only headers present
-            showMessageBox("No valid data rows found after conversion. The output file might be empty except for headers.");
-          }
-
-          // Create a new worksheet from the processed data
           const newSheet = XLSX.utils.aoa_to_sheet(newData);
-          // Create a new workbook
           const newWorkbook = XLSX.utils.book_new();
-          // Append the new sheet to the workbook
           XLSX.utils.book_append_sheet(newWorkbook, newSheet, 'Converted');
 
-          // Write the workbook to an .xlsx file and trigger download
           XLSX.writeFile(newWorkbook, 'converted_file.xlsx');
           showMessageBox("File converted and downloaded successfully!");
 
@@ -204,7 +158,6 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // Custom message box function to replace alert()
     function showMessageBox(message) {
       const messageBox = document.createElement('div');
       messageBox.style.position = 'fixed';
@@ -219,7 +172,6 @@
       messageBox.style.borderRadius = '8px';
       messageBox.style.textAlign = 'center';
       messageBox.style.maxWidth = '300px';
-      messageBox.style.wordWrap = 'break-word';
 
       const messageText = document.createElement('p');
       messageText.textContent = message;
