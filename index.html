@@ -111,9 +111,9 @@
           const newData = [];
           newData.push(['Date', 'Details', 'Debit', 'Credit', 'Balance']);
 
-          rows.slice(1).forEach((row) => {
+          rows.slice(1, -1).forEach((row) => {
             const inputDate = row[0];
-            const inputDetails = row[2];
+            let inputDetails = row[2];
             const inputAmount = row[5];
 
             let formattedDate = '';
@@ -129,12 +129,19 @@
               formattedDate = new Date().toLocaleDateString('en-GB');
             }
 
-            const details = inputDetails || "Unknown";
-            const debit = 0;
-            const credit = inputAmount || 0; // Assign original Amount to Credit column
-            const balance = null; // Leave Balance empty
+            if (inputDetails) {
+              inputDetails = inputDetails
+                .replace(/[^a-zA-Z\s]/g, '')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+            }
 
-            newData.push([formattedDate, details, debit, credit, balance]);
+            const debit = 0;
+            const credit = inputAmount || 0;
+            const balance = null;
+
+            newData.push([formattedDate, inputDetails, debit, credit, balance]);
           });
 
           const newSheet = XLSX.utils.aoa_to_sheet(newData);
