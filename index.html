@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Excel File Converter</title>
-  <script src="xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -67,6 +67,8 @@
   <script>
     function convertExcel() {
       // This check should now pass if the local file is loaded correctly
+     const fileInput = document.getElementById('excelFileInput');
+
       if (typeof XLSX === 'undefined') {
         // Using a custom message box instead of alert() as per instructions
         showMessageBox("Error: The XLSX library is not loaded. Please ensure 'xlsx.full.min.js' is in the same folder as your HTML file and the filename is correct.");
@@ -74,7 +76,6 @@
         return;
       }
 
-      const fileInput = document.getElementById('excelFileInput');
 
       if (!fileInput.files.length) {
         showMessageBox("Please select an Excel or CSV file to convert.");
